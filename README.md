@@ -1,7 +1,9 @@
 # Programming Language Benchmark Game Visualisation
 
 ![alt overview](https://github.com/jsaak/plbgv/blob/master/game_overview.png)
+[BIG](https://raw.githubusercontent.com/jsaak/plbgv/master/game_overview.png)
 ![alt zoomed_in](https://github.com/jsaak/plbgv/blob/master/game_zoomed_in.png)
+[BIG](https://raw.githubusercontent.com/jsaak/plbgv/master/game_zoomed_in.png)
 
 All hard work was done by http://benchmarksgame.alioth.debian.org/.
 I only wanted to see these graphs, maybe you too.
