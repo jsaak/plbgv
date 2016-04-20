@@ -39,14 +39,11 @@ data = File.readlines("clean-data.csv")
 #drop first line
 data = data.drop 1
 
-#meteor-contest has only 1 result line per language
-single_data = data.select{|line| line.start_with? 'meteor-contest'}
-multiple_data = data.reject{|line| line.start_with? 'meteor-contest'}
+#drop unused challenges
+data.reject!{|line| ((line.start_with? 'meteor-contest') || (line.start_with? 'chameneos-redux') || (line.start_with? 'thread-ring')) }
 
-#drop first and second line in every 3 on multiple_data
-multiple_data = multiple_data.each_slice(3).map(&:last)
-
-data2 = single_data + multiple_data
+#drop first and second line in every 3
+data2 = data.each_slice(3).map(&:last)
 
 Measurement = Struct.new(:time, :code_size, :mem)
 
@@ -57,9 +54,6 @@ data2.each do |line|
   next unless language == 'C gcc'
   tasks[task] = Measurement.new(secs.to_f, gz.to_f, kb.to_f)
 end
-
-# update mem usage on meteor-contest, not to divide by 0
-tasks['meteor-contest'].mem = 0.0001
 
 hash = Hash.new
 data2.each do |line|
@@ -72,6 +66,9 @@ data2.each do |line|
     hash[language] = m
   end
   #normalize with gcc results
+  # if secs.to_f < tasks[task].time
+    # puts "#{language}: #{task} #{secs.to_f}sec #{tasks[task].time}sec"
+  # end
   hash[language].time.push     (secs.to_f / tasks[task].time)
   hash[language].code_size.push(gz.to_f / tasks[task].code_size)
   hash[language].mem.push(kb.to_f / tasks[task].mem)
@@ -79,57 +76,82 @@ end
 
 Stat = Struct.new(:lang, :min, :q1, :median, :q3, :max)
 
-stat_time = Array.new
+@stat_time = Array.new
 stat_mem = Array.new
 stat_code = Array.new
 
 hash.each do |lang, m|
   a = m.time.sort
-  stat_time.push(Stat.new(lang, a.min, quartile(a,1), quartile(a,2), quartile(a,3), a.max))
+  @stat_time.push(Stat.new(lang, a.min, quartile(a,1), quartile(a,2), quartile(a,3), a.max))
   a = m.code_size.sort
   stat_code.push(Stat.new(lang, a.min, quartile(a,1), quartile(a,2), quartile(a,3), a.max))
   a = m.mem.sort
   stat_mem.push(Stat.new(lang, a.min, quartile(a,1), quartile(a,2), quartile(a,3), a.max))
 end
 
-pp stat_time.sort_by(&:median)
-stat_mem.sort_by(&:median)
-stat_code.sort_by(&:median)
+@stat_time.sort_by!(&:median)
+stat_mem.sort_by!(&:median)
+stat_code.sort_by!(&:median)
 
+@textcolor = "tc rgb 'grey'"
 
-exit
+def plot(max)
+  filename = ""
+  if max.nil?
+    filename = "game_overview.png"
+  else
+    filename = "game_zoomed_in.png"
+  end
 
-Gnuplot.open do |gp|
-   Gnuplot::Plot.new(gp) do |plot|
+  Gnuplot.open do |gp|
+    Gnuplot::Plot.new(gp) do |plot|
 
-      # font = '/usr/share/fonts/truetype/freefont/FreeMono.ttf'
       font = '/usr/share/fonts/type1/gsfonts/n019003l.pfb'
-      # font = '/usr/share/fonts/truetype/windowsbol/tahomabd.ttf'
-      # font = '/usr/share/fonts/truetype/msttcorefonts/Courier_New_Bold.ttf'
-      plot.terminal("png medium size 1000,600 x000000 x777777 x404040 xff0000 xffa500 x66cdaa xcdb5cd xadd8e6 x0000ff xdda0dd x9500d3 font \"#{font}\" 9")
-      plot.output("game.png") 
+      plot.output(filename) 
+      plot.terminal("png medium size 960,1800 font \"#{font}\" 9 background rgb 'black'")
 
       plot.key("left top")
       plot.grid("ytics")
-      plot.title("updated: #{Time.now}")
-      plot.xzeroaxis("lt -1")
-      plot.pointsize("0")
-      # plot.ylabel('ft')
-      # plot.xlabel('jatekok')
-      #plot.xgrid(data[0])
+      plot.xtics("rotate scale 0 #{@textcolor}")
+      plot.ytics("rotate scale 0 #{@textcolor}")
+      plot.bmargin("9")
+      plot.border("0")
+      plot.style("fill solid")
+      plot.arbitrary_lines = ["unset key"]
 
-      dss = Array.new
-      cols.each do |c|
-         x = 0
-         ds = Gnuplot::DataSet.new( data[c] ) do |ds|
-            x += 1
-            # ds.with = "linespoints pt 13"
-            ds.with = "linespoints"
-            ds.title = names[c]
-         end
-         dss.push(ds)
+      data = []
+      data.push (1..@stat_time.size).to_a
+      data.push @stat_time.collect(&:min)
+      data.push @stat_time.collect(&:q1)
+      data.push @stat_time.collect(&:median)
+      data.push @stat_time.collect(&:q3)
+      data.push @stat_time.collect(&:max)
+      data.push [0.5] * @stat_time.size
+      data.push @stat_time.collect{|x| x.lang.inspect}
+
+      plot.xrange("[0.5:#{@stat_time.size+0.5}]")
+      unless max.nil?
+        plot.yrange("[0:#{max}]")
       end
 
-      plot.data = dss
-   end
+      plot.data << Gnuplot::DataSet.new(data) do |ds|
+        ds.using = "1:3:2:6:5:7:xticlabels(8)"
+        ds.with = "candlesticks lt 3 lw 2 whiskerbars"
+        #ds.notitle
+      end
+
+      plot.data << Gnuplot::DataSet.new(data) do |ds|
+        ds.using = "1:4:4:4:4:7"
+        ds.with = "candlesticks lt 7 lw 2"
+        # ds.notitle
+      end
+    end
+  end
+
+  `mogrify -rotate 90 #{filename}`
 end
+
+plot(nil)
+plot(6)
+
+`eom game_zoomed_in.png`
