@@ -15,8 +15,8 @@ You will need ruby, gnuplot, and imagemagick.
 On debian based systems:
 
 ```
-sudo apt-get install imagemagick ruby gnuplot
-sudo gem install gnuplot
+$ sudo apt-get install imagemagick ruby gnuplot
+$ sudo gem install gnuplot
 ```
 
 Some paths and executrables are burned in, so you will have to change them.
@@ -26,7 +26,7 @@ Do not forget that this is a game, my favourite language came last.
 Although it was fast enough to generate this graph.
 
 # Links
-http://benchmarksgame.alioth.debian.org/u64q/summarydata.php
-http://gnuplot.sourceforge.net/demo_4.3/candlesticks.html
-http://gnuplot-tricks.blogspot.hu/2009/10/turning-of-histogram.html
-https://gist.github.com/Antti/5773468
+ - http://benchmarksgame.alioth.debian.org/u64q/summarydata.php
+ - http://gnuplot.sourceforge.net/demo_4.3/candlesticks.html
+ - http://gnuplot-tricks.blogspot.hu/2009/10/turning-of-histogram.html
+ - https://gist.github.com/Antti/5773468
